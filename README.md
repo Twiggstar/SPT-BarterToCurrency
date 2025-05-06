@@ -1,63 +1,49 @@
+# Barter To Roubles
 
-# Barter To Roubles – SPT Mod by TheSaladGuy
+This mod converts all barter-only trades from SPT traders into rouble-based purchases using flea market prices from Ragfair, with a fallback to handbook pricing.
 
-This mod automatically converts all **barter-only trades** offered by traders in **Single Player Tarkov (SPT)** into clean, rouble-based purchases — using a configurable multiplier.
+## Features
 
----
+- Converts barter-only trades to rouble purchases
+- Uses flea market pricing (RagfairPriceService)
+- Falls back to handbook pricing if flea data is missing
+- Configurable price multiplier in config.json
+- Skips all trades using roubles, dollars, or euros
+- REF trader is excluded by default
 
-## ✅ Features
+## Configuration
 
-- Replaces barter-only trades with rouble equivalents
-- Uses the item's handbook value × a multiplier from `config.json`
-- Skips trades that already use roubles, euros, or dollars
-- Excludes specific modded traders like REF by ID
-- Clean logging to server console
+Edit config.json:
 
----
-
-## ⚙️ Configuration
-
-The included `config.json` lets you change the rouble price multiplier:
-
-```json
 {
   "multiplier": 4
 }
-```
 
----
+Price formula:
+(fleaPrice OR handbookPrice)  multiplier
 
-## 📂 Installation
+## Installation
 
-1. Extract to:
-   ```
+1. Extract the mod to:
    user/mods/TheSaladGuy-BarterToRoubles/
-   ```
-2. Optional: Edit `config.json` to change the multiplier
-3. Launch SPT server and look for:
-   ```
-   [BarterToRoubles] ✅ Barter-only trades converted using x4 price. REF trader excluded.
-   ```
 
----
+2. (Optional) Adjust the multiplier in config.json
 
-## ℹ️ Details
+3. Start the SPT server and confirm in logs:
+   [BarterToRoubles] Converted barter-only trades using x4 flea-based price. REF trader excluded.
 
-- Only affects trades that use **barter items** (e.g. wires, GP coins)
-- Leaves all **money-based trades** untouched
-- REF trader (`6617beeaa9cfa777ca915b7c`) is hardcoded to be excluded
+## Technical Details
 
----
+- Uses RagfairPriceService for current flea prices
+- Falls back to handbook data when necessary
+- Rounds prices to the nearest 100
 
-## 👤 Author
+## Author
 
-**TheSaladGuy**
+TheSaladGuy
 
-Mod logic built collaboratively with scripting assistance and real-time testing.  
-Open to contributions and adjustments based on SPT updates.
+Developed with scripting assistance, tested live. Community feedback welcome.
 
----
+## License
 
-## 📜 License
-
-MIT — feel free to modify and share.
+MIT - free to use, modify, and redistribute.

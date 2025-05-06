@@ -54,7 +54,7 @@ class BarterToRoubles {
             }
         }
 
-        logger.info(`[BarterToRoubles] ✅ Converted barter-only trades using x${multiplier} flea-based price. REF trader excluded.`);
+        logger.info(`[BarterToRoubles]  Converted barter-only trades using x${multiplier} flea-based price. REF trader excluded.`);
     }
 }
 
