@@ -1,60 +1,63 @@
-
-const path = require("path");
-const fs = require("fs");
-
 class BarterToRoubles {
+    constructor() {
+        this.mod = "TheSaladGuy-BarterToRoubles";
+    }
+
     postDBLoad(container) {
         const db = container.resolve("DatabaseServer").getTables();
-        const logger = container.resolve("WinstonLogger");
         const ragfairPriceService = container.resolve("RagfairPriceService");
-        const ROUBLE_ID = "5449016a4bdc2d6f028b456f";
-        const REF_TRADER_ID = "6617beeaa9cfa777ca915b7c";
 
-        // Load multiplier from config
-        let multiplier = 4;
-        try {
-            const config = JSON.parse(fs.readFileSync(path.resolve(__dirname, "../config.json"), "utf-8"));
-            multiplier = config.multiplier || 4;
-        } catch (e) {
-            logger.warning("[BarterToRoubles] Failed to load config.json. Using default multiplier x4.");
-        }
+        for (const traderID in db.traders) {
+            if (["ragfair", "fence"].includes(traderID)) continue;
 
-        // Prepare handbook fallback values
-        const handbook = db.templates.handbook.Items;
-        const handbookValues = {};
-        for (const entry of handbook) {
-            handbookValues[entry.Id] = entry.Price;
-        }
-
-        for (const traderId in db.traders) {
-            if (traderId === REF_TRADER_ID) continue;
-
-            const assort = db.traders[traderId].assort;
-            if (!assort?.barter_scheme || !assort?.items) continue;
+            const trader = db.traders[traderID];
+            const assort = trader.assort;
+            if (!assort) continue;
 
             for (const item of assort.items) {
-                const itemId = item._id;
-                const itemTpl = item._tpl;
+                const itemID = item._tpl;
+                let price = 0;
 
-                const scheme = assort.barter_scheme[itemId];
-                if (!scheme || !Array.isArray(scheme)) continue;
+                // Check existing trader price first
+                const traderPriceEntry = assort.barter_scheme[item._id];
+                if (traderPriceEntry && traderPriceEntry[0][0]._tpl === "5449016a4bdc2d6f028b456f") {
+                    price = traderPriceEntry[0][0].count;
+                }
 
-                const containsCurrency = scheme[0].some(entry => {
-                    return ["5449016a4bdc2d6f028b456f", "5696686a4bdc2da3298b456a", "569668774bdc2da2298b4568"].includes(entry._tpl);
-                });
-                if (containsCurrency) continue;
+                // Include Armor plates prices (if they exist)
+                if (db.templates.items[itemID]?._props?.Slots) {
+                    for (const slot of db.templates.items[itemID]._props.Slots) {
+                        if (slot._props?.filters[0]?.Filter) {
+                            const plateIDs = slot._props.filters[0].Filter;
+                            for (const plateID of plateIDs) {
+                                const platePrice = ragfairPriceService.getDynamicPriceForItem(plateID) 
+                                    || db.templates.handbook.Items.find(x => x.Id === plateID)?.Price;
+                                if (platePrice) price += platePrice;
+                            }
+                        }
+                    }
+                }
 
-                // Get flea price or fallback to handbook
-                const fleaPrice = ragfairPriceService.getFleaPrice(itemTpl);
-                const fallback = handbookValues[itemTpl] || 1;
-                const basePrice = fleaPrice > 0 ? fleaPrice : fallback;
-                const finalPrice = Math.round((basePrice * multiplier) / 100) * 100 || 1;
+                // Fallback to ragfair price if still zero
+                if (!price) {
+                    price = ragfairPriceService.getDynamicPriceForItem(itemID);
+                }
 
-                assort.barter_scheme[itemId] = [[{ count: finalPrice, _tpl: ROUBLE_ID }]];
+                // Fallback to handbook price multiplied by a realistic modifier
+                if (!price) {
+                    const handbookItem = db.templates.handbook.Items.find(x => x.Id === itemID);
+                    if (handbookItem) price = handbookItem.Price * 4;
+                }
+
+                // Set final price
+                if (price > 0) {
+                    assort.barter_scheme[item._id] = [[{
+                        _tpl: "5449016a4bdc2d6f028b456f",
+                        count: Math.round(price)
+                    }]];
+                }
             }
         }
-
-        logger.info(`[BarterToRoubles]  Converted barter-only trades using x${multiplier} flea-based price. REF trader excluded.`);
     }
 }
 
