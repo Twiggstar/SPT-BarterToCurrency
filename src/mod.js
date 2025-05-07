@@ -7,6 +7,11 @@ class BarterToRoubles {
         const db = container.resolve("DatabaseServer").getTables();
         const ragfairPriceService = container.resolve("RagfairPriceService");
 
+        const getItemPrice = (tpl) => {
+            return ragfairPriceService.getDynamicPriceForItem(tpl) ||
+                db.templates.handbook.Items.find(x => x.Id === tpl)?.Price * 4 || 0;
+        };
+
         for (const traderID in db.traders) {
             if (["ragfair", "fence"].includes(traderID)) continue;
 
@@ -14,46 +19,27 @@ class BarterToRoubles {
             const assort = trader.assort;
             if (!assort) continue;
 
+            const itemsDict = assort.items.reduce((dict, itm) => {
+                dict[itm._id] = itm;
+                return dict;
+            }, {});
+
             for (const item of assort.items) {
-                const itemID = item._tpl;
-                let price = 0;
+                let totalPrice = getItemPrice(item._tpl);
 
-                // Check existing trader price first
-                const traderPriceEntry = assort.barter_scheme[item._id];
-                if (traderPriceEntry && traderPriceEntry[0][0]._tpl === "5449016a4bdc2d6f028b456f") {
-                    price = traderPriceEntry[0][0].count;
+                // Safely add only installed attachments' prices
+                if (item.parentId && itemsDict[item.parentId]) {
+                    totalPrice += getItemPrice(itemsDict[item.parentId]._tpl);
                 }
 
-                // Include Armor plates prices (if they exist)
-                if (db.templates.items[itemID]?._props?.Slots) {
-                    for (const slot of db.templates.items[itemID]._props.Slots) {
-                        if (slot._props?.filters[0]?.Filter) {
-                            const plateIDs = slot._props.filters[0].Filter;
-                            for (const plateID of plateIDs) {
-                                const platePrice = ragfairPriceService.getDynamicPriceForItem(plateID) 
-                                    || db.templates.handbook.Items.find(x => x.Id === plateID)?.Price;
-                                if (platePrice) price += platePrice;
-                            }
-                        }
-                    }
+                for (const childItem of assort.items.filter(ci => ci.parentId === item._id)) {
+                    totalPrice += getItemPrice(childItem._tpl);
                 }
 
-                // Fallback to ragfair price if still zero
-                if (!price) {
-                    price = ragfairPriceService.getDynamicPriceForItem(itemID);
-                }
-
-                // Fallback to handbook price multiplied by a realistic modifier
-                if (!price) {
-                    const handbookItem = db.templates.handbook.Items.find(x => x.Id === itemID);
-                    if (handbookItem) price = handbookItem.Price * 4;
-                }
-
-                // Set final price
-                if (price > 0) {
+                if (totalPrice > 0) {
                     assort.barter_scheme[item._id] = [[{
                         _tpl: "5449016a4bdc2d6f028b456f",
-                        count: Math.round(price)
+                        count: Math.round(totalPrice)
                     }]];
                 }
             }
