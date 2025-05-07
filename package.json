@@ -1,9 +1,8 @@
 {
-    "name": "TheSaladGuy-BarterToRoubles",
-    "version": "1.3.0",
-    "description": "Convert Fence barter trades into Rouble‐only offers (×4 multiplier, handbook fallback).",
-    "main": "src/mod.js",
-    "author": "TheSaladGuy",
-    "license": "MIT",
-    "sptVersion": "~3.11"
+  "name": "TheSaladGuy-BarterToCurrency",
+  "version": "2.0.0",
+  "author": "TheSaladGuy",
+  "license": "MIT",
+  "main": "src/mod.js",
+  "sptVersion": "3.11.3"
 }
